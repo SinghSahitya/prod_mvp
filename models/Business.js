@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Item = require('./Item');
+const Inventory = require('./Inventory');
 const Report = require('./Report');
 const Customer = require('./Customer');
 const Supplier = require('./Supplier');
@@ -23,9 +24,9 @@ const businessSchema = new mongoose.Schema({
     o_image : { type:Buffer, required:false},
     location : {type:String, required:true},
     b_image : { type:Buffer, required:false },
-    item : {
+    inventory : {
         type: mongoose.Schema.Types.ObjectId,
-        ref : 'Item',
+        ref : 'Inventory',
         required : false
     },
 
@@ -55,6 +56,8 @@ const businessSchema = new mongoose.Schema({
         ref : 'Expense',
         required : false
     },
+
+    password : { type: String, required:true},
 
     createdAt: { type: Date, default: Date.now }
 
