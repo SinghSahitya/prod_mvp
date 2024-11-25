@@ -3,8 +3,9 @@ const express = require('express');
 const path = require('path');
 const app = express();
 const mongoose = require('mongoose');
-
-
+const bodyParser = require('body-parser');
+const cors = require('cors');
+const AuthRouter = require('.Routes/AuthRouter.js');
 // Replace this with your MongoDB connection string
 const mongoURI = process.env.MONGO_DB;
 
@@ -22,6 +23,12 @@ const User = require('./models/User'); // Adjust the path as per your project st
 app.get('/api', (req, res) => {
     res.json({ message: 'Hello from server!' });
 });
+
+
+app.use(bodyParser.json());
+app.use(cors());
+
+app.use('/auth',AuthRouter );
 
 // Route to save user data
 app.post('/api/users', async (req, res) => {
