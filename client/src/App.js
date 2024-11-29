@@ -1,12 +1,18 @@
 import React from 'react';
-import UserForm from './UserForm'; // Adjust the path based on file structure
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Signup from './components/Signup';
+import Login from './components/Login';
 
 function App() {
   return (
-    <div>
-      <h1>Welcome to the User Form</h1>
-      <UserForm />
-    </div>
+    <Router>
+      <div className="container mt-5">
+        <Routes>
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/login" element={<Login />} />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 

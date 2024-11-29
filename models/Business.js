@@ -11,15 +11,7 @@ const businessSchema = new mongoose.Schema({
     gstin:{type:String, required:true},
     b_name : {type: String, required:true},
     o_name : {type: String, required: true},
-    contact : { 
-        type: String, 
-        required : true,
-        match: [
-            /^[+]?[0-9]{10,15}$/, // Regex for validating phone number
-            'Please enter a valid phone number' // Error message if invalid
-          ],
-          unique:true,
-    },
+    contact: { type: String, required: true },
     email : { type: String, required:true, unique:true},
     o_image : { type:Buffer, required:false},
     location : {type:String, required:true},
@@ -65,4 +57,4 @@ const businessSchema = new mongoose.Schema({
 
 const Business = mongoose.model("Business", businessSchema);
 
-module.export = Business;
+module.exports = Business;
