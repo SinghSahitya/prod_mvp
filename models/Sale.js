@@ -1,11 +1,11 @@
 const mongoose = require('mongoose');
 
 // Define the schema
-const cashflowSchema = new mongoose.Schema({
+const saleSchema = new mongoose.Schema({
     name : {  type:String, required:true  },
 }, { timestamps: true });
 
 // Create the model
-const CashFlow = mongoose.model('CashFlow', cashflowSchema);
+const Sale = mongoose.model('Sale', saleSchema);
 
-module.exports = CashFlow;
+module.exports = Sale;

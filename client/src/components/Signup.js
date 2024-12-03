@@ -1,95 +1,165 @@
-import React, { useState } from 'react';
-import axios from 'axios';
-import { auth } from './firebaseConfig';
-import { signInWithPhoneNumber, RecaptchaVerifier } from "firebase/auth";
+import React, { useState } from "react";
+import axios from "axios";
+import firebase from "./firebaseConfig";
+import { useNavigate } from "react-router-dom";
 
-function Signup() {
+const Signup = () => {
   const [formData, setFormData] = useState({
-    gstin: '',
-    b_name: '',
-    o_name: '',
-    contact: '',
-    email: '',
-    location: '',
-    password: '',
+    gstin: "",
+    businessName: "",
+    ownerName: "",
+    contact: "",
+    location: "",
+    businessType: "",
   });
-
-  const [otp, setOtp] = useState('');
-  const [confirmationResult, setConfirmationResult] = useState(null);
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const sendOtp = () => {
-    const phoneNumber = `+91${formData.contact}`; // Replace with the appropriate country code
-    const appVerifier = new RecaptchaVerifier(
-      'recaptcha-container',
-      { size: 'invisible' },
-      auth
-    );
-
-    signInWithPhoneNumber(auth, phoneNumber, appVerifier)
-      .then((confirmation) => {
-        setConfirmationResult(confirmation);
-        alert('OTP sent!');
-      })
-      .catch((error) => alert(`Error sending OTP: ${error.message}`));
-  };
-
-  const verifyOtpAndSignup = async (e) => {
-    e.preventDefault();
-    if (!otp || !confirmationResult) {
-      return alert('Please enter the OTP');
+  const [otp, setOtp] = useState("");
+  const [verificationId, setVerificationId] = useState("");
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const navigate = useNavigate(); 
+  const sendOtp = async () => {
+    if (!formData.contact) {
+      alert("Please enter a phone number!");
+      return;
     }
 
-    try {
-      // Verify OTP
-      await confirmationResult.confirm(otp);
+    const appVerifier = new firebase.auth.RecaptchaVerifier("recaptcha-container", {
+      size: "invisible",
+    });
 
-      // Send data to backend
-      const response = await axios.post('http://localhost:5000/auth/signup', formData);
-      alert(response.data.message);
+    try {
+      const confirmationResult = await firebase
+        .auth()
+        .signInWithPhoneNumber(formData.contact, appVerifier);
+
+      setVerificationId(confirmationResult.verificationId);
+      setIsOtpSent(true);
+      alert("OTP sent to your phone!");
     } catch (error) {
-      alert(`Error verifying OTP or signing up: ${error.message}`);
+      console.error("Error sending OTP: ", error);
+      alert("Failed to send OTP. Try again.");
+    }
+  };
+
+  const handleSignup = async () => {
+    if (!otp || !verificationId) {
+      alert("Please enter the OTP!");
+      return;
+    }
+
+    const credential = firebase.auth.PhoneAuthProvider.credential(verificationId, otp);
+
+    try {
+      const userCredential = await firebase.auth().signInWithCredential(credential);
+
+      const idToken = await userCredential.user.getIdToken();
+
+      const response = await axios.post("http://localhost:5000/api/auth/signup", {
+        ...formData,
+        idToken,
+      });
+      localStorage.setItem("token", response.data.token);
+      alert(response.data.message);
+      navigate("/home");
+    } catch (error) {
+      console.error("Error signing up: ", error);
+      alert("Failed to sign up. Try again.");
     }
   };
 
   return (
-    <div className="card p-4">
-      <h2>Signup</h2>
-      <form onSubmit={verifyOtpAndSignup}>
-        {['gstin', 'b_name', 'o_name', 'contact', 'email', 'location', 'password'].map((field) => (
-          <div className="form-group mb-3" key={field}>
-            <label>{field.toUpperCase()}</label>
-            <input
-              type={field === 'password' ? 'password' : 'text'}
-              name={field}
-              className="form-control"
-              value={formData[field]}
-              onChange={handleChange}
-              required
-            />
-          </div>
-        ))}
-        <button type="button" className="btn btn-secondary w-100 mb-2" onClick={sendOtp}>
-          Send OTP
-        </button>
-        <div id="recaptcha-container"></div>
-        <div className="form-group mb-3">
-          <label>Enter OTP</label>
+    <div className="container mt-5">
+      <h2 className="text-center">Sign Up</h2>
+      <div className="card p-4 mt-3">
+        <div className="mb-3">
+          <label htmlFor="gstin" className="form-label">
+            GSTIN
+          </label>
           <input
             type="text"
             className="form-control"
-            value={otp}
-            onChange={(e) => setOtp(e.target.value)}
-            required
+            id="gstin"
+            value={formData.gstin}
+            onChange={(e) => setFormData({ ...formData, gstin: e.target.value })}
           />
         </div>
-        <button className="btn btn-primary w-100">Sign Up</button>
-      </form>
+        <div className="mb-3">
+          <label htmlFor="businessName" className="form-label">
+            Business Name
+          </label>
+          <input
+            type="text"
+            className="form-control"
+            id="businessName"
+            value={formData.businessName}
+            onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
+          />
+        </div>
+        <div className="mb-3">
+          <label htmlFor="ownerName" className="form-label">
+            Owner Name
+          </label>
+          <input
+            type="text"
+            className="form-control"
+            id="ownerName"
+            value={formData.ownerName}
+            onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })}
+          />
+        </div>
+        <div className="mb-3">
+          <label htmlFor="contact" className="form-label">
+            Phone Number
+          </label>
+          <input
+            type="text"
+            className="form-control"
+            id="contact"
+            placeholder="+1XXXXXXXXXX"
+            value={formData.contact}
+            onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
+            disabled={isOtpSent}
+          />
+        </div>
+        <div className="mb-3">
+          <label htmlFor="location" className="form-label">
+            Location
+          </label>
+          <input
+            type="text"
+            className="form-control"
+            id="location"
+            value={formData.location}
+            onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+          />
+        </div>
+        {isOtpSent && (
+          <div className="mb-3">
+            <label htmlFor="otp" className="form-label">
+              OTP
+            </label>
+            <input
+              type="text"
+              className="form-control"
+              id="otp"
+              placeholder="Enter OTP"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+            />
+          </div>
+        )}
+        <div id="recaptcha-container"></div>
+        {!isOtpSent ? (
+          <button className="btn btn-primary w-100" onClick={sendOtp}>
+            Send OTP
+          </button>
+        ) : (
+          <button className="btn btn-success w-100" onClick={handleSignup}>
+            Sign Up
+          </button>
+        )}
+      </div>
     </div>
   );
-}
+};
 
 export default Signup;

@@ -1,55 +1,46 @@
 const mongoose = require('mongoose');
-const Item = require('./Item');
 const Inventory = require('./Inventory');
 const Report = require('./Report');
 const Customer = require('./Customer');
-const Supplier = require('./Supplier');
-const CashFlow = require('./CashFlow');
+const Order = require('./Order');
 const Expense = require('./Expense');
 
 const businessSchema = new mongoose.Schema({
     gstin:{type:String, required:true},
-    b_name : {type: String, required:true},
-    o_name : {type: String, required: true},
+    businessName : {type: String, required:true},
+    ownerName : {type: String, required: true},
     contact: { type: String, required: true },
-    email : { type: String, required:true, unique:true},
-    o_image : { type:Buffer, required:false},
+    ownerImage : { type:Buffer, required:false},
     location : {type:String, required:true},
-    b_image : { type:Buffer, required:false },
+    businessImage : { type:Buffer, required:false },
     inventory : {
         type: mongoose.Schema.Types.ObjectId,
         ref : 'Inventory',
         required : false
     },
 
-    b_type : { type: String, required:false},
+    businessType : { type: String, required:false},
     report : {
         type: mongoose.Schema.Types.ObjectId,
         ref : 'Report',
         required : false
     },
-    cashflow : {
+    order : { //Chagne to Order - Purchase & Sales 
         type: mongoose.Schema.Types.ObjectId,
-        ref : 'CashFlow',
+        ref : 'Order',
         required : false
     },
-    customer : {
+    customer : { // Type column
         type: mongoose.Schema.Types.ObjectId,
         ref : 'Customer',
         required : false
     },
-    supplier : {
-        type: mongoose.Schema.Types.ObjectId,
-        ref : 'Supplier',
-        required : false
-    },
+
     expense : {
         type: mongoose.Schema.Types.ObjectId,
         ref : 'Expense',
         required : false
     },
-
-    password : { type: String, required:true},
 
     createdAt: { type: Date, default: Date.now }
 

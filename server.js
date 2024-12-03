@@ -4,8 +4,8 @@ const path = require('path');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const cors = require('cors');
-const AuthRouter = require('./Routes/AuthRouter.js'); // Ensure this path is correct
-
+const authRoutes = require('./Routes/authRoutes.js'); // Ensure this path is correct
+const homeRoutes = require('./Routes/homeRoutes.js'); 
 const app = express();
 
 // MongoDB connection string from environment variables
@@ -22,13 +22,10 @@ app.use(bodyParser.json()); // Parses incoming JSON requests
 app.use(cors()); // Enables Cross-Origin Resource Sharing
 app.use(express.json()); // Parses incoming JSON payloads
 
-// API routes
-app.get('/api', (req, res) => {
-  res.json({ message: 'Hello from server!' });
-});
-
 // Auth routes
-app.use('/auth', AuthRouter);
+app.use("/api/home", homeRoutes);
+app.use('/api/auth', authRoutes);
+// app.use('/api/business', businessRoutes);
 
 
 // Start server

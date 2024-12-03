@@ -1,60 +1,118 @@
-const bcrypt = require('bcrypt');
-const jwt = require("jsonwebtoken");
-const BusinessModel = require("../models/Business");
+const admin = require('../config/firebaseConfig');
+const jwt = require('jsonwebtoken');
+const Business = require('../models/Business');
+const axios = require("axios");
 
-
-const signup = async (req, res) => {
-    try{
-        const { gstin, b_name, o_name, contact, email, location, password   } = req.body;
-        const user = await BusinessModel.findOne({email});
-        if (user){
-            return res.status(409).json({ message:"User already exists", success:false  });
-        }
-        if (!gstin || !b_name || !o_name || !contact || !email || !location || !password) {
-            return res.status(400).json({ message: 'All fields are required.', success: false });
-          }
-        const businessModel = new BusinessModel({gstin, b_name, o_name, contact, email, location, password  });
-        console.log(password);
-        const salt = await bcrypt.genSalt(10);
-        businessModel.password = await bcrypt.hash(password, salt);
-        await businessModel.save();
-        res.status(201).json({ message:"Signup successfully", success:true  });
-    }   catch (err){
-        console.error('Error in /auth/signup:', err); 
-        res.status(500).json({ message:"Internal Error 520", success:false  });
+// Login Handler
+exports.login = async (req, res) => {
+    const { phoneNumber } = req.body;
+  
+    if (!phoneNumber) {
+      return res.status(400).json({ message: "Phone number is required" });
     }
-}
-
-
-const login = async (req, res) => {
-    try{
-        const { email, contact ,password } = req.body;
-        const business = await Business.findOne({
-            $or: [{ email }, { contact }],
-          });
-      
-        const errorMsg = "Auth failed either email or password is wrong" 
-        if (!business){
-            return res.status(403).json({ message:"Business does not exist", success:false  });
-        }
-
-        const isPassEqual = await bcrypt.compare(password, business.password);
-
-        
-        const jwtToken = jwt.sign(
-            { email:business.email, _id:business._id  },
-            process.env.JWT_SECRET,
-            {expiresIn:'2h'}
-        )
-
-        if (!isPassEqual){
-            return res.status(403).json({ message:"Invlid Password", success:false  });
-        }
-
-        res.status(201).json({ message:"Login successfully", success:true, jwtToken, email, name:user.b_name});
-    }   catch (err){
-        res.status(500).json({ message:err, success:false  });
+  
+    try {
+      // Check if the phone number exists in the database
+      const user = await Business.findOne({ contact: phoneNumber });
+      if (!user) {
+        return res.status(404).json({ message: "No such phone number exists" });
+      }
+  
+      // Send OTP using Firebase
+      const phoneAuth = await admin.auth().createCustomToken(phoneNumber); // Custom token if needed
+  
+      return res.status(200).json({ message: "User found, OTP can be sent", phoneAuth });
+    } catch (error) {
+      console.error("Error during login:", error);
+      return res.status(500).json({ message: "Internal server error" });
     }
-}
+  };
 
-module.exports = {signup,login}
+// Verify OTP Handler
+exports.verifyOtp = async (req, res) => {
+    const { phoneNumber, idToken } = req.body;
+  
+    try {
+      // Verify the Firebase ID token
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+  
+      // Ensure the phone number matches
+      if (decodedToken.phone_number !== phoneNumber) {
+        return res.status(401).json({ message: "OTP verification failed" });
+      }
+  
+      // Generate your JWT token (or handle user authentication)
+      const token = jwt.sign(
+        { id: decodedToken.uid, phoneNumber: decodedToken.phone_number },
+        process.env.JWT_SECRET,
+        { expiresIn: "1h" }
+      );
+  
+      res.json({ message: "Login successful", token });
+    } catch (err) {
+      res.status(400).json({ message: "Invalid OTP", error: err.message });
+    }
+  };
+
+// Signup Handler
+exports.signup = async (req, res) => {
+    const { gstin, businessName, ownerName, contact, location, businessType, idToken } = req.body;
+  
+    if (!gstin || !businessName || !ownerName || !contact || !location) {
+      return res.status(400).json({ message: "All required fields must be filled" });
+    }
+  
+    try {
+      // Verify the Firebase ID token
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+  
+      // Ensure the phone number matches
+      if (decodedToken.phone_number !== contact) {
+        return res.status(401).json({ message: "OTP verification failed" });
+      }
+  
+      // Check if the user already exists in the database
+      const existingUser = await Business.findOne({ contact });
+      if (existingUser) {
+        return res.status(400).json({ message: "User already exists" });
+      }
+
+      // Validate the GST number using the external API
+    const apiKey = process.env.GSTIN_API_KEY; // Your API key stored in .env
+    const gstApiUrl = `http://sheet.gstincheck.co.in/check/${apiKey}/${gstin}`;
+
+    const gstResponse = await axios.get(gstApiUrl);
+
+    if (!gstResponse.data.flag) {
+      return res.status(400).json({ message: "Invalid GST number" });
+    }
+    const validatedAddress = gstResponse.data.data.pradr.adr;
+
+    
+      // Create a new Business document
+      const newBusiness = new Business({
+        gstin,
+        businessName,
+        ownerName,
+        contact,
+        location:validatedAddress,
+        businessType,
+      });
+  
+      await newBusiness.save();
+  
+      // Generate a JWT token for the user
+      const token = jwt.sign(
+        { id: newBusiness._id, phoneNumber: newBusiness.contact },
+        process.env.JWT_SECRET,
+        { expiresIn: "1h" }
+      );
+  
+      res.status(201).json({ message: "Signup successful", token });
+    } catch (err) {
+      console.error("Error during signup:", err);
+      res.status(500).json({ message: "Signup failed", error: err.message });
+    }
+  };
+
+
